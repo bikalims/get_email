@@ -3,7 +3,7 @@ Get imap or pop3 mail attachments matching an address and subject and save to fi
 
 Example usage: 
 
-  python2 get_email.py  --server mail.server.com  -u mailuser -p password   -v 'address@domain'  -m  '.* anything'
+  python2 get_email.py  --server mail.server.com  -u mailuser -p password   -v 'address@domain'  -m  '.* attachment'
   
 
 Retrieve imap mail matching valid senders 'address@domain' and subject regular expression '.* attachment' and
