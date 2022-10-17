@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 """
 get_email.py - Designed to be run from cron, this script checks the pop3 mailbox
 Based on django-helpdesk's get_email.py. inus@bikalabs.com 2022-10-17
