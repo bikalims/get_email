@@ -4,7 +4,7 @@ Get imap or pop3 mail attachments matching an address and subject and save to fi
 
 usage: get_email.py [-h] [--quiet] [--pop3] --user USER --password PASSWORD
                     --server SERVER --valid VALID [VALID ...] --match MATCH
-                    [MATCH ...] [--delete]
+                    [MATCH ...] [--delete] [--ignore]
                     
 
 
@@ -24,5 +24,5 @@ Other:
 -d/--delete: Delete message after saving to file
 
 
-       
-  
+ To delete both invalid and downloaded messages, use both -d and -i 
+ 
