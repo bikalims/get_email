@@ -119,15 +119,23 @@ def file_from_message(message, quiet=False):
 
     body_plain, body_html = '', ''
 
-    if not (sender_email in Xargs.valid ) and not quiet:
+#    if not (sender_email in Xargs.valid ) and not quiet:
+
+    #if not (re.match(sender_email, Xargs.valid )) and not quiet:
+    for s in Xargs.valid:
+        if not re.match(sender_email, s ):
                 sys.stderr.write("Ignoring mail from {}. Subject \"{}\".\n".format(sender, subject))
+                if Xargs.ignore:
+                    return True #and delete 
+                else:
+                    return False
 
     for s in Xargs.match:
         matchobj = re.match(s, subject)
         if matchobj:
             subj_match = s
             if not quiet:
-                print('Sender Match: ',  sender,'\nSubject Match: ', subj_match)
+                print('Subject Match: ', subj_match, ' from sender: ', sender)
 
             counter = 0
             files = []
@@ -194,6 +202,7 @@ if __name__ == '__main__':
     parser.add_argument('--valid', '-v', required=True, type=str, help='Valid sender emails, eg user@site.com', nargs='+')
     parser.add_argument('--match', '-m', required=True, type=str, help='Valid subject, eg \"(.)* lims\"', nargs='+')
     parser.add_argument('--delete', '-d',  default=False, action='store_true', help='Delete mail after saving' )
+    parser.add_argument('--ignore', '-i',  default=False, action='store_true', help='Delete ignored mail after saving' )
     Xargs = parser.parse_args()
     
     if Xargs.pop3:
