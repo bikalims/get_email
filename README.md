@@ -6,18 +6,17 @@ usage: get_email.py [-h] [--quiet] [--pop3] --user USER --password PASSWORD
                     --server SERVER --valid VALID [VALID ...] --match MATCH
                     [MATCH ...] [--delete] [--ignore]
 
-
   
-Retrieve imap mail,
-  1 matching valid senders 'address@domain'
+Retrieve imap or pop3 secure mail,
+  1. matching valid senders 'address@domain'
    and 
-  2 matching subject using a regular expression
+  2. matching subject, using a regular expression
 
 eg. '.* attachment' and save to filename as specified in the mail. 
 Files with the same name will be overwritten by a later mail if found.
 
+Switches:
 
-Other:
 -q/--quiet:  Quiet mode
 
 -d/--delete: Delete message after saving to file
@@ -53,5 +52,5 @@ Ignoring mail from NoReply@sample.com Subject "attention contact lims was execut
 Ignoring mail from NoReply@sample.com Subject "location lims was executed at 10/18/2022 4:20:00 PM".
 Ignoring mail from NoReply@sample.com Subject "system lims was executed at 10/18/2022 4:30:06 PM".
 
-       
-  
+ To delete both invalid and downloaded messages, use both -d and -i 
+ 
