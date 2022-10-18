@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 """
 get_email.py - Designed to be run from cron, this script checks the pop3 mailbox
 Based on django-helpdesk's get_email.py. inus@bikalabs.com 2022-10-17
@@ -62,14 +62,18 @@ def process_pop3(args):
                     message_lines[i] = message_lines[i].decode('utf-8')
                 except:
                     pass
-            full_message = "\n".join(message_lines)
+
+            if sys.version_info < (3,):
+                full_message = "\n".join(message_lines)
+            else:
+                full_message = "\n".join(message_lines).encode()            
             
             if file_from_message(message=full_message, quiet=args.quiet):
                 if args.delete:
                     server.dele(msgNum)
                     sys.stderr.write("Deleted message # {}\n".format(msgNum) )
                 else:
-                    sys.stderr.write("Dry run, message #{} not deleted\n".format(msgNum) )
+                    sys.stderr.write("Message #{} not deleted, -d not specified\n".format(msgNum) )
             else:
                 sys.stderr.write("File not saved, message #{} not deleted\n".format(msgNum) )
 
@@ -103,7 +107,15 @@ def decode_mail_headers(string):
 def file_from_message(message, quiet=False):
     # 'message' must be an RFC822 formatted message.
     msg = message
-    message = email.message_from_string(msg)
+    
+    #import pdb; pdb.set_trace()
+
+    if sys.version_info < (3,):
+        message = email.message_from_string(msg)
+    else:
+        message = email.message_from_string(msg.decode())
+
+
     subject = message.get('subject', 'No subject.')
     subject = decode_mail_headers(decodeUnknown(message.get_charset(), subject))
     subject = str(subject)
@@ -119,23 +131,34 @@ def file_from_message(message, quiet=False):
 
     body_plain, body_html = '', ''
 
-#    if not (sender_email in Xargs.valid ) and not quiet:
-
-    #if not (re.match(sender_email, Xargs.valid )) and not quiet:
     for s in Xargs.valid:
-        if not re.match(sender_email, s ):
+        try:
+            re.match(s,sender_email)
+        except Exception as e:
+            sys.stderr.write("Invalid regular expression \"{}\" for sender {}, subject \"{}\".\n".format(s, sender_email, subject))
+            return False
+        
+        if not re.match(s,sender_email):
                 sys.stderr.write("Ignoring mail from {}. Subject \"{}\".\n".format(sender, subject))
                 if Xargs.ignore:
                     return True #and delete 
                 else:
                     return False
+        else:
+                sys.stderr.write("Sender match: \"{}\".\n".format(sender))
+                
+
 
     for s in Xargs.match:
-        matchobj = re.match(s, subject)
+        try:
+            matchobj = re.match(s, subject)
+        except Exception as e:
+            sys.stderr.write("Invalid regular expression \"{}\" for sender {}, subject \"{}\".\n".format(s, sender, subject))
+            return False
+
         if matchobj:
-            subj_match = s
             if not quiet:
-                print('Subject Match: ', subj_match, ' from sender: ', sender)
+                sys.stderr.write("Subject match: \"{}\".\n".format(matchobj.string))
 
             counter = 0
             files = []
@@ -175,12 +198,21 @@ def file_from_message(message, quiet=False):
             for file in files:
                 if file['content']: # and file['filename']:
                     if file['filename']:
-                        filename = file['filename'].encode('ascii', 'replace').replace(' ', '_')
+                        if sys.version_info < (3,):
+                            filename = file['filename'].encode('ascii', 'replace').replace(' ', '_')
+                        else:
+                            filename = file['filename'].replace(' ', '_')
+
                         filename = file['filename'].replace(' ', '_')   
                         filename = re.sub('[^a-zA-Z0-9._-]+', '', filename)
                         try:
                             f = open(filename,"w")
-                            f.write(file['content'])
+
+                            if sys.version_info < (3,):
+                                f.write(file['content'])
+                            else:
+                                f.write(file['content'].decode())
+
                             f.close()
                         except Exception as e:
                             sys.stderr.write("Error: Attachment not saved: {}, error {}\n".format(filename,e))
