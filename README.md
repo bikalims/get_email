@@ -32,7 +32,7 @@ python2 get_email.py  --server mail.example.com  -u user  -p password123   -v 'N
 
 Info: imap login to mail.example.com as user, 5 messages
 
-Ignoring mail from Inus Scheepers <inus.sc@gmail.com>. Subject "lims".
+Ignoring mail from John Smith <john.smith@gmail.com>. Subject "lims".
 Sender match: "NoReply@sample.com".
 Subject match: "Account lims was executed at 10/18/2022 4:00:07 PM".
 Attachment saved as Account_lims.csv
