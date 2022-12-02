@@ -1,5 +1,5 @@
-#!/usr/bin/env python
 """
+#!/usr/bin/env python
 get_email.py - Designed to be run from cron, this script checks the pop3 mailbox
 Based on django-helpdesk's get_email.py. inus@bikalabs.com 2022-10-17
 
@@ -8,16 +8,23 @@ python get_email.py --user zzzz --server pop.zzzz.com --pop3 --password zzzz --v
 """
 from __future__ import print_function
 
+import argparse
 import email
+from email.header import decode_header
+from email.utils import parseaddr, collapse_rfc2231_value
 import imaplib
+import logging
 import mimetypes
 import poplib
 import re
 import sys
-import argparse
 
-from email.header import decode_header
-from email.utils import parseaddr, collapse_rfc2231_value
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('getEmail')
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+fh = logging.FileHandler('/home/senaite/sync/logs/emails.log')
+fh.setFormatter(formatter)
+logger.addHandler(fh)
 
 months_conversion = {
     "Jan": "01",
@@ -31,7 +38,7 @@ months_conversion = {
     "Sep": "09",
     "Oct": "10",
     "Nov": "11",
-    "Dev": "12",
+    "Dec": "12",
 }
 
 
@@ -41,8 +48,8 @@ def process_imap(args):
     server.select("INBOX")
     status, data = server.search(None, "NOT", "DELETED")
     if not args.quiet:
-        print(
-            "Info: imap login to {} as {}, {} messages \n".format(
+        logger.info(
+            "Info: imap login to {} as {}, {} messages ".format(
                 args.server, args.user, len(data[0].split())
             )
         )
@@ -53,7 +60,7 @@ def process_imap(args):
             if file_from_message(message=data[0][1], quiet=args.quiet) and args.delete:
                 server.store(num, "+FLAGS", "\\Deleted")
                 if not args.quiet:
-                    print("Info: Message #{} deleted ".format(num))
+                    logger.info("Info: Message #{} deleted ".format(num))
 
     server.expunge()
     server.close()
@@ -68,8 +75,8 @@ def process_pop3(args):
     response, messagesInfo, octets = server.list()
 
     if not args.quiet:
-        print(
-            "Info: pop3 login to {} as {}, {} messages \n".format(
+        logger.info(
+            "Info: pop3 login to {} as {}, {} messages ".format(
                 args.server, args.user, len(messagesInfo)
             )
         )
@@ -99,24 +106,25 @@ def process_pop3(args):
             else:
                 full_message = "\n".join(message_lines).encode()
             if file_from_message(
-                message=full_message, file_path=file_path, quiet=args.quiet
+                message=full_message, file_path=file_path, quiet=args.quiet, rename=args.rename
             ):
                 if args.delete:
                     server.dele(msgNum)
-                    sys.stderr.write("Deleted message # {}\n".format(msgNum))
+                    logger.info("Deleted message # {}".format(msgNum))
                 else:
-                    sys.stderr.write(
-                        "Message #{} not deleted, -d not specified\n".format(msgNum)
+                    logger.debug(
+                        "Message #{} not deleted, -d not specified".format(msgNum)
                     )
             else:
-                sys.stderr.write(
-                    "File not saved, message #{} not deleted\n".format(msgNum)
+                logger.info(
+                    "File not saved, message #{} not deleted".format(msgNum)
                 )
 
         except Exception as e:
-            sys.stderr.write(
-                "Error: Exception process_email, message #{}, {}\n".format(msg, e)
+            logger.error(
+                "Error: Exception process_email, message #{}, {}".format(msg, e)
             )
+    server.quit()
 
 
 def decodeUnknown(charset, string):
@@ -142,7 +150,7 @@ def decode_mail_headers(string):
     return decoded[0][0]
 
 
-def file_from_message(message, file_path=".", quiet=False):
+def file_from_message(message, file_path=".", quiet=False, rename=False):
     # 'message' must be an RFC822 formatted message.
     msg = message
 
@@ -169,36 +177,36 @@ def file_from_message(message, file_path=".", quiet=False):
         try:
             re.match(s, sender_email)
         except Exception:
-            sys.stderr.write(
-                'Invalid regular expression "{}" for sender {}, subject "{}".\n'.format(
+            logger.error(
+                'Invalid regular expression "{}" for sender {}, subject "{}".'.format(
                     s, sender_email, subject
                 )
             )
             return False
 
         if not re.match(s, sender_email):
-            sys.stderr.write(
-                'Ignoring mail from {}. Subject "{}".\n'.format(sender, subject)
+            logger.error(
+                'Ignoring mail from {}. Subject "{}".'.format(sender, subject)
             )
             if Xargs.ignore:
                 return True  # and delete
             else:
                 return False
         else:
-            sys.stderr.write('Sender match: "{}".\n'.format(sender))
+            logger.debug('Sender match: "{}".'.format(sender))
     for s in Xargs.match:
         try:
             matchobj = re.match(s, subject)
         except Exception:
-            sys.stderr.write(
-                'Invalid regular expression "{}" for sender {}, subject "{}".\n'.format(
+            logger.error(
+                'Invalid regular expression "{}" for sender {}, subject "{}".'.format(
                     s, sender, subject
                 )
             )
             return False
         if matchobj:
             if not quiet:
-                sys.stderr.write('Subject match: "{}".\n'.format(matchobj.string))
+                logger.info('Subject match: "{}".'.format(matchobj.string))
 
             counter = 0
             files = []
@@ -242,7 +250,7 @@ def file_from_message(message, file_path=".", quiet=False):
                 body = body_plain
             else:
                 body = "No plain-text email body"
-            sys.stderr.write(f"Body test: {body}")
+            logger.debug(f"Body test: {body}")
             for file in files:
                 if file["content"]:  # and file['filename']:
                     if file["filename"]:
@@ -250,18 +258,19 @@ def file_from_message(message, file_path=".", quiet=False):
                             filename = (
                                 file["filename"]
                                 .encode("ascii", "replace")
-                                .replace(" ", "_")
                             )
                         else:
-                            filename = file["filename"].replace(" ", "_")
+                            filename = file["filename"]
 
-                        filename = file["filename"].replace(" ", "_")
-                        filename = re.sub("[^a-zA-Z0-9._-]+", "", filename)
-                        if False:  # Add date stamp to file names
+                        # filename = file["filename"].replace(" ", "_")
+                        # filename = re.sub("[^a-zA-Z0-9._-]+", "", filename)
+                        if rename: # Add date stamp to file names
+                            # import pdb; pdb.set_trace()
                             parts = filename.split(".")
                             if parts and parts[-1] == "csv":
                                 date = message.get("Date").split(" ")
-                                date = f"{date[2]}{months_conversion[date[1]]}{int(date[0]):02d}"
+                                time = date[3][:-3].replace(':', '')
+                                date = f"{date[2]}{months_conversion[date[1]]}{int(date[0]):02d}.{time}"
                                 parts.insert(-1, date)
                                 filename = f"{'.'.join(parts)}"
                         filename = f"{file_path}/{filename}"
@@ -275,15 +284,15 @@ def file_from_message(message, file_path=".", quiet=False):
 
                             f.close()
                         except Exception as e:
-                            sys.stderr.write(
-                                "Error: Attachment not saved: {}, error {}\n".format(
+                            logger.error(
+                                "Error: Attachment not saved: {}, error {}".format(
                                     filename, e
                                 )
                             )
                             return False
                         if not quiet:
-                            sys.stderr.write(
-                                "Attachment saved as {}\n".format(filename)
+                            logger.info(
+                                "Attachment saved as {}".format(filename)
                             )
             return True
 
@@ -348,9 +357,18 @@ if __name__ == "__main__":
         action="store_true",
         help="Delete ignored mail after saving",
     )
+    parser.add_argument(
+        "--rename",
+        "-r",
+        default=False,
+        action="store_true",
+        help="Add timestamp to file",
+    )
     Xargs = parser.parse_args()
 
+    logger.info(f"Start run with {Xargs}")
     if Xargs.pop3:
         process_pop3(Xargs)
     else:
         process_imap(Xargs)
+    logger.info("Run complete")
