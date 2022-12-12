@@ -22,7 +22,7 @@ import sys
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("getEmail")
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-fh = logging.FileHandler("/home/senaite/sync/logs/emails.log")
+fh = logging.FileHandler("/home/mike/sync/logs/emails.log")
 fh.setFormatter(formatter)
 logger.addHandler(fh)
 
@@ -41,7 +41,7 @@ months_conversion = {
     "Dec": "12",
 }
 
-MAIL_FOLDER = "processed"
+MAIL_FOLDER = "Processed"
 
 
 def parse_uid(data):
@@ -177,7 +177,7 @@ def decode_mail_headers(string):
 
 def file_from_message(message, file_path=".", quiet=False, rename=False):
     # 'message' must be an RFC822 formatted message.
-    logger.info("inside file_from_message")
+    logger.debug("inside file_from_message")
     msg = message
 
     if sys.version_info < (3,):
@@ -201,7 +201,9 @@ def file_from_message(message, file_path=".", quiet=False, rename=False):
     logger.info(f"file_from_message: sender {sender_email}")
 
     body_plain = ""
+    accept_sender = False
     for s in Xargs.valid:
+        logger.info(f"Process valid {s}")
         try:
             re.match(s, sender_email)
         except Exception:
@@ -212,19 +214,19 @@ def file_from_message(message, file_path=".", quiet=False, rename=False):
             )
             return False
 
-        if not re.match(s, sender_email):
-            logger.error('Ignoring mail from {}. Subject "{}".'.format(sender, subject))
-            if Xargs.ignore:
-                return True  # and delete
-            else:
-                return False
-        else:
+        if re.match(s, sender_email):
             logger.debug('Sender match: "{}".'.format(sender))
-    logger.info('Email is valid')
+            accept_sender = True
+    if not accept_sender:
+        logger.error('Ignoring mail from {}. Subject "{}".'.format(sender, subject))
+        if Xargs.ignore:
+            return True  # and delete
+        else:
+            return False
+    logger.info("Email is valid")
 
     for s in Xargs.match:
-        logger.info(f"Process {s}")
-        # import pdb; pdb.set_trace()
+        logger.info(f"Process match {s}")
         try:
             matchobj = re.match(s, subject)
         except Exception:
