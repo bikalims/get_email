@@ -22,7 +22,7 @@ import sys
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("getEmail")
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-fh = logging.FileHandler("/home/mike/sync/logs/emails.log")
+fh = logging.FileHandler("/home/senaite/sync/logs/emails.log")
 fh.setFormatter(formatter)
 logger.addHandler(fh)
 
